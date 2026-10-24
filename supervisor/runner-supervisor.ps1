@@ -23,8 +23,12 @@ Credentials (-Auth):
        write" (repository) or "Self-hosted runners: Read and write" (organization); needs
        PowerShell 7 to read the private key (-AppId, -AppPrivateKeyPath).
 
-Stop with Ctrl+C (or stop the scheduled task): runner containers are stopped and their
-registrations deleted.
+It runs either on the host (Windows PowerShell 5.1 or PowerShell 7, for example as a scheduled
+task) or as the `supervisor` service of compose.yaml (-ExternalSidecars, with the host's
+Docker socket mounted).
+
+Stop with Ctrl+C, or SIGTERM in a container (`docker compose stop`): runner containers are
+stopped and their registrations deleted.
 
 .EXAMPLE
 ./runner-supervisor.ps1 -Repository owner/repo -Labels ci
@@ -57,6 +61,9 @@ param(
     [string]$AppId,
     [string]$AppPrivateKeyPath,
     [int]$PollSeconds = 5,
+    # The dind sidecars are started by someone else (the compose.yaml `supervisor` service
+    # depends on them), so don't run `docker compose up`.
+    [switch]$ExternalSidecars,
     # Start the missing runners once and exit, leaving them running (for testing).
     [switch]$Once,
     # Remove this project's runner containers and runner registrations, then exit.
@@ -252,14 +259,35 @@ if ($Cleanup) {
     return
 }
 
+# In a container, `docker stop` sends SIGTERM, which would otherwise end the process without the
+# finally block below. Record it instead and let the loop stop the runners tidily.
+$stopSignal = $false
+if ($IsLinux) {
+    Add-Type -TypeDefinition @'
+using System.Runtime.InteropServices;
+public static class SupervisorStopSignal {
+    public static volatile bool Requested;
+    static PosixSignalRegistration registration;
+    public static void Register() {
+        registration = PosixSignalRegistration.Create(PosixSignal.SIGTERM, context => { context.Cancel = true; Requested = true; });
+    }
+}
+'@
+    [SupervisorStopSignal]::Register()
+    $stopSignal = $true
+}
+function Test-StopRequested { $stopSignal -and [SupervisorStopSignal]::Requested }
+
 Write-Log "Supervising $Slots runner slot(s) for $target (labels: $(@('self-hosted', 'linux', 'x64') + $Labels -join ', '); image: $Image; auth: $Auth)."
 # Docker Desktop, the network or the GitHub CLI may still be starting (for example right after
 # logon, when the scheduled task starts): wait and retry instead of exiting, because Task
 # Scheduler does not restart a task whose script exits with an error.
 while ($true) {
     try {
-        & docker compose --file $ComposeFile --project-name $Project up --detach --wait
-        if ($LASTEXITCODE -ne 0) { throw 'starting the Docker-in-Docker sidecars failed' }
+        if (-not $ExternalSidecars) {
+            & docker compose --file $ComposeFile --project-name $Project up --detach --wait
+            if ($LASTEXITCODE -ne 0) { throw 'starting the Docker-in-Docker sidecars failed' }
+        }
         Assert-RunnerGroupPrivate
         Remove-StaleRunners
         break
@@ -267,7 +295,7 @@ while ($true) {
     catch {
         if ($Once) { throw }
         Write-Log "Not ready yet ($($_.Exception.Message)); retrying in 30s."
-        Start-Sleep -Seconds 30
+        foreach ($second in 1..30) { if (Test-StopRequested) { return }; Start-Sleep -Seconds 1 }
     }
 }
 
@@ -320,6 +348,7 @@ try {
         }
         if ($Once) { break }
         Start-Sleep -Seconds $PollSeconds
+        if (Test-StopRequested) { Write-Log 'Stop requested.'; break }
     }
 }
 finally {
