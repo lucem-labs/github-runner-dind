@@ -19,6 +19,10 @@ vulnerabilities:
     paths: ["opt/node/lib/node_modules/npm/node_modules/brace-expansion/package.json"]
     statement: "Denial of service via crafted brace patterns; npm bundles brace-expansion 5.0.9 with no fixed npm release yet; patterns come only from trusted project files."
     expired_at: 2026-11-11
+  - id: CVE-2026-109869
+    paths: ["opt/node/lib/node_modules/npm/node_modules/undici/package.json"]
+    statement: "Denial of service via an unhandled stream error; the latest npm releases (11.21.1, 12.2.1) bundle undici 6.29.0, the fix is in 6.29.1; npm only fetches from the trusted registry."
+    expired_at: 2026-11-23
   - id: CVE-2026-19534
     paths: ["opt/node/lib/node_modules/npm/node_modules/undici/package.json"]
     statement: "Denial of service via unrequested WebSocket upgrade; npm bundles undici 6.28.0 with no fixed npm release yet; npm does not use WebSockets."

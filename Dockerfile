@@ -10,11 +10,11 @@
 FROM ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
 
 # GitHub Actions runner: https://github.com/actions/runner/releases (SHA-256 from the release notes)
-ARG RUNNER_VERSION=2.338.0
-ARG RUNNER_SHA256=af4b794c1bc41d73d40535e3fe092a39f9679cd8d965954c2aca25a05ca41d32
+ARG RUNNER_VERSION=2.338.1
+ARG RUNNER_SHA256=08e9ccb3604d2462c24b5e33604dc30810296ca15cc65f23cffd4317eb144c37
 # PowerShell: https://github.com/PowerShell/PowerShell/releases (SHA-256 from the release notes / hashes.sha256)
-ARG POWERSHELL_VERSION=7.6.6
-ARG POWERSHELL_SHA256=ddbc4a2d113bbd46d283cfedcbcd117a70caefd7673f41f2b4e0000badf103bc
+ARG POWERSHELL_VERSION=7.6.8
+ARG POWERSHELL_SHA256=59112e38ad83350e4f6dc0195953c66b5926792f300ca2e7691b8242e7a16e7f
 # Node.js: https://nodejs.org/dist/v<version>/SHASUMS256.txt
 ARG NODE_VERSION=24.21.0
 ARG NODE_SHA256=fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6
@@ -24,7 +24,7 @@ ARG NPM_VERSION=11.21.0
 ARG DOTNET_SDK_VERSION=10.0.401
 ARG DOTNET_SDK_SHA512=51c8b999af9e8dd9998c9edc5944e19a90788862068acd38694e098889054ce8c23d4f0c5cccfa16bf187d044562359e5ee69a9f8ad0bbe913ba90311fbce25b
 # Docker CLI (client only) from Docker's signed apt repository; keep in step with the dind sidecar.
-ARG DOCKER_CLI_VERSION=29.9.0
+ARG DOCKER_CLI_VERSION=29.9.2
 ARG DOCKER_REPO_SIGNING_FPR=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
 # Docker Compose plugin: https://github.com/docker/compose/releases (docker-compose-linux-x86_64.sha256)
 ARG COMPOSE_VERSION=5.6.0
