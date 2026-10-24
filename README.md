@@ -1,29 +1,47 @@
 # github-runner-dind
 
-Ephemeral self-hosted GitHub Actions runners in our own Docker image, each paired with its own Docker-in-Docker (dind) daemon, kept as a warm pool by a host-side supervisor that hands every runner a **single-use just-in-time (JIT) config**.
+Ephemeral self-hosted GitHub Actions runners in our own Docker image, each paired with its own Docker-in-Docker (dind) daemon, kept as a warm pool by a supervisor that hands every runner a **single-use just-in-time (JIT) config**.
 
 - **Our own image.** It starts from `ubuntu:24.04`, pinned by digest. Every tool is pinned to an exact version and verified against its published checksum or signed package repository: the Actions runner, PowerShell 7, .NET SDK, Node.js and npm, the Docker CLI and Compose plugin, and Playwright Chromium. It holds no secrets and runs as an unprivileged user.
-- **No long-lived credential in any container.** The supervisor on the host mints a JIT config per runner with GitHub's `generate-jitconfig` API. A container only ever gets the config for its own single-job runner.
+- **No long-lived credential in a runner container.** The supervisor mints a JIT config per runner with GitHub's `generate-jitconfig` API. A container only ever gets the config for its own single-job runner.
 - **A brand-new container per job.** `docker run --rm` gives every job a fresh filesystem. The dind daemon is cleaned before each job.
 - **Isolated from the host's Docker.** Jobs get their own dind daemon, so they can't see or control the host's containers, and no host directories are mounted.
 - **Maintained.** The image is rebuilt weekly and on every change on GitHub-hosted runners, scanned with Trivy, published with an SBOM and provenance, and kept current by Dependabot plus a weekly version check.
 
 ## How it works
 
-```
-host                                                      GitHub
-───────────────────────────────────────────────────       ──────────────
-runner-supervisor.ps1  ── generate-jitconfig (API) ──────▶ registers runner N
-  holds the credential       ◀── single-use JIT config ──
-  │
-  └─ docker run --rm  runner container (slot N) ◀──────── dispatches one job
-        RUNNER_JITCONFIG, network = dind-N, certs:ro      (labels match runs-on)
-        └─ runs exactly one job, exits, is removed
-     … supervisor starts the next one with a new config
-compose.yaml: dind-1 … dind-N (privileged, one per slot)
+```mermaid
+flowchart LR
+  subgraph host["Docker host"]
+    supervisor["Supervisor<br/>holds the credential"]
+    subgraph slot["Slot N"]
+      runner["Runner container<br/>one per job"]
+      dind["dind-N sidecar<br/>privileged"]
+    end
+  end
+  github["GitHub Actions"]
+
+  supervisor -- "(1) generate-jitconfig" --> github
+  github -- "single-use JIT config" --> supervisor
+  supervisor -- "(2) start with the config" --> runner
+  runner -. "shares network and TLS certs" .- dind
+  github -- "(3) one job whose labels match" --> runner
 ```
 
-The supervisor keeps one idle runner per slot. GitHub dispatches queued jobs to idle runners whose labels match `runs-on`. When a job finishes, its runner deregisters, the container exits and is removed, and the supervisor starts a replacement within seconds. A runner that exits within 60 seconds counts as a failure and is retried with back-off.
+1. For every free slot, the supervisor asks GitHub's `generate-jitconfig` API for a **single-use runner config**. The supervisor holds the credential (a `gh` login or a GitHub App); containers never see it.
+2. It starts a brand-new runner container with that config (`docker run --rm`), attached to the slot's Docker-in-Docker sidecar: it shares the sidecar's network namespace and mounts its TLS client certificates read-only.
+3. GitHub dispatches **one** queued job whose `runs-on` labels match to the idle runner.
+4. When the job ends, the runner deregisters, its container exits and is removed, and the supervisor starts a replacement within seconds. A runner that exits within 60 seconds counts as a failure and is retried with back-off.
+
+Where the parts come from:
+
+| Part | Defined in | Runs |
+|---|---|---|
+| Docker-in-Docker sidecars, one per slot | `compose.yaml` (`dind-1`, `dind-2`, …) | always, restarted by Docker |
+| Supervisor | `supervisor/runner-supervisor.ps1` | on the host, or as the `supervisor` service in `compose.yaml` ([recommended](#running-the-supervisor-in-docker-recommended)) |
+| Runner containers | started by the supervisor, from this repository's image | one job each |
+
+The runners serve either one repository (`-Repository`) or an organization's runner group (`-Organization`), so several private repositories can share one pool.
 
 ## Quick start
 
