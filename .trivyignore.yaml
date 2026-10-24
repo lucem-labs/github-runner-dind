@@ -27,19 +27,3 @@ vulnerabilities:
     paths: ["opt/node/lib/node_modules/npm/node_modules/undici/package.json"]
     statement: "Denial of service via unrequested WebSocket upgrade; npm bundles undici 6.28.0 with no fixed npm release yet; npm does not use WebSockets."
     expired_at: 2026-11-11
-
-  # Docker Compose 5.6.0 (latest release) is built with Go 1.26.8 / golang.org/x/net 0.58.0.
-  # These are denial-of-service issues in net/http, HTTP/2 and crypto/tls; in this image the
-  # Compose plugin only talks to the local Docker-in-Docker daemon over TLS.
-  - id: CVE-2026-78667
-    paths: ["usr/local/lib/docker/cli-plugins/docker-compose"]
-    statement: "Go net/http denial of service; no Compose release built with Go 1.26.9 yet; only talks to the local dind daemon."
-    expired_at: 2026-11-11
-  - id: CVE-2026-78669
-    paths: ["usr/local/lib/docker/cli-plugins/docker-compose"]
-    statement: "Go net/http HTTP/2 denial of service (stdlib and x/net); no Compose release with the fix yet; only talks to the local dind daemon."
-    expired_at: 2026-11-11
-  - id: CVE-2026-97031
-    paths: ["usr/local/lib/docker/cli-plugins/docker-compose"]
-    statement: "Go crypto/tls denial of service; no Compose release built with Go 1.26.9 yet; only talks to the local dind daemon."
-    expired_at: 2026-11-11
