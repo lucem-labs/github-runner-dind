@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 #
 # Ephemeral self-hosted GitHub Actions runner, designed to run next to a Docker-in-Docker
-# sidecar (compose.yaml) and to be started by the host-side supervisor with a single-use
+# sidecar (compose.yaml) and to be started by the supervisor with a single-use
 # just-in-time runner config (supervisor/runner-supervisor.ps1). The image holds no secrets. Every tool is pinned to an exact version and verified against
 # its published checksum or signed package repository. Bump versions in this file only,
 # through a reviewed pull request; see README.md "Updating".
@@ -16,10 +16,10 @@ ARG RUNNER_SHA256=08e9ccb3604d2462c24b5e33604dc30810296ca15cc65f23cffd4317eb144c
 ARG POWERSHELL_VERSION=7.6.8
 ARG POWERSHELL_SHA256=59112e38ad83350e4f6dc0195953c66b5926792f300ca2e7691b8242e7a16e7f
 # Node.js: https://nodejs.org/dist/v<version>/SHASUMS256.txt
-ARG NODE_VERSION=24.21.0
-ARG NODE_SHA256=fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6
+ARG NODE_VERSION=24.22.1
+ARG NODE_SHA256=6c172a9ab6718f7b801fb5a7bd486af2ee5e32758086a04b84fcce2aa77095e6
 # npm: upgraded from the version bundled with Node.js to pick up fixes in its dependencies.
-ARG NPM_VERSION=11.21.0
+ARG NPM_VERSION=11.21.1
 # .NET SDK: https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/10.0/releases.json (SHA-512)
 ARG DOTNET_SDK_VERSION=10.0.402
 ARG DOTNET_SDK_SHA512=1904a98dda2db34ba78ba3c4fb1b224455329af91c341d83547843c1839e112b04ae699ee92fa2449a8f62249196a938723078c0c60b9f65c88539d5687729c2
