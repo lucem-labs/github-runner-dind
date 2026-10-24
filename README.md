@@ -30,9 +30,9 @@ The supervisor keeps one idle runner per slot. GitHub dispatches queued jobs to 
 Requirements: Docker (Docker Desktop on Windows), PowerShell (Windows PowerShell 5.1 or PowerShell 7), and a credential that can create runners for the repository (see below).
 
 ```powershell
-git clone https://github.com/kharabasz/github-runner-dind
+git clone https://github.com/lucem-labs/github-runner-dind
 cd github-runner-dind
-./supervisor/runner-supervisor.ps1 -Repository owner/repo -Labels ci -Image ghcr.io/kharabasz/github-runner-dind@sha256:<digest>
+./supervisor/runner-supervisor.ps1 -Repository owner/repo -Labels ci -Image ghcr.io/lucem-labs/github-runner-dind@sha256:<digest>
 ```
 
 The supervisor starts the dind sidecars (`docker compose up`), removes leftovers from earlier runs, and keeps the pool running until stopped. Target the runners in workflows by label:
@@ -56,7 +56,7 @@ Register a scheduled task that starts at logon (Docker Desktop must be running) 
 
 ```powershell
 $script = 'C:\path\to\github-runner-dind\supervisor\runner-supervisor.ps1'
-$arguments = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`" -Repository owner/repo -Labels ci -Image ghcr.io/kharabasz/github-runner-dind@sha256:<digest>"
+$arguments = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`" -Repository owner/repo -Labels ci -Image ghcr.io/lucem-labs/github-runner-dind@sha256:<digest>"
 Register-ScheduledTask -TaskName 'GitHub runner supervisor' `
   -Action (New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arguments) `
   -Trigger (New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME) `
@@ -76,7 +76,7 @@ Supervisor parameters:
 | `-Repository` | (required) | `owner/repo` the runners serve |
 | `-Slots` | `2` | Number of runners. Each needs a `dind-N` service in `compose.yaml`. |
 | `-Labels` | `ci` | Custom labels; `self-hosted`, `linux` and `x64` are always added |
-| `-Image` | `ghcr.io/kharabasz/github-runner-dind:latest` | Runner image; pin by digest |
+| `-Image` | `ghcr.io/lucem-labs/github-runner-dind:latest` | Runner image; pin by digest |
 | `-Project` | `github-runners` | Compose project of the dind sidecars, and the prefix for container and volume names |
 | `-NamePrefix` | `runner` | Runners are named `<prefix>-<slot>-<random>`. Also selects which registrations count as leftovers, so use a prefix unique to this supervisor. |
 | `-Auth`, `-AppId`, `-AppPrivateKeyPath` | `gh` | Credential, see above |

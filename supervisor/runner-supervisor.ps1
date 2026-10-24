@@ -31,7 +31,7 @@ param(
     [int]$Slots = 2,
     # Custom labels; self-hosted, linux and x64 are always added.
     [string[]]$Labels = @('ci'),
-    [string]$Image = 'ghcr.io/kharabasz/github-runner-dind:latest',
+    [string]$Image = 'ghcr.io/lucem-labs/github-runner-dind:latest',
     # Compose project of the dind sidecars (compose.yaml, RUNNERS_PROJECT).
     [string]$Project = 'github-runners',
     # Defaults to compose.yaml next to the supervisor folder.
