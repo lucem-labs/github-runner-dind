@@ -19,23 +19,19 @@ vulnerabilities:
     paths: ["opt/node/lib/node_modules/npm/node_modules/brace-expansion/package.json"]
     statement: "Denial of service via crafted brace patterns; npm bundles brace-expansion 5.0.9 with no fixed npm release yet; patterns come only from trusted project files."
     expired_at: 2026-11-11
+  - id: CVE-2026-109869
+    paths: ["opt/node/lib/node_modules/npm/node_modules/undici/package.json"]
+    statement: "Denial of service via an unhandled stream error; the latest npm releases (11.21.1, 12.2.1) bundle undici 6.29.0, the fix is in 6.29.1; npm only fetches from the trusted registry."
+    expired_at: 2026-11-23
   - id: CVE-2026-19534
     paths: ["opt/node/lib/node_modules/npm/node_modules/undici/package.json"]
     statement: "Denial of service via unrequested WebSocket upgrade; npm bundles undici 6.28.0 with no fixed npm release yet; npm does not use WebSockets."
     expired_at: 2026-11-11
 
-  # Docker Compose 5.6.0 (latest release) is built with Go 1.26.8 / golang.org/x/net 0.58.0.
-  # These are denial-of-service issues in net/http, HTTP/2 and crypto/tls; in this image the
-  # Compose plugin only talks to the local Docker-in-Docker daemon over TLS.
-  - id: CVE-2026-78667
-    paths: ["usr/local/lib/docker/cli-plugins/docker-compose"]
-    statement: "Go net/http denial of service; no Compose release built with Go 1.26.9 yet; only talks to the local dind daemon."
-    expired_at: 2026-11-11
+  # Docker Compose 5.6.1 (latest release) is built with Go 1.26.10 but still vendors
+  # golang.org/x/net 0.58.0. In this image the Compose plugin only talks to the local
+  # Docker-in-Docker daemon over TLS.
   - id: CVE-2026-78669
     paths: ["usr/local/lib/docker/cli-plugins/docker-compose"]
-    statement: "Go net/http HTTP/2 denial of service (stdlib and x/net); no Compose release with the fix yet; only talks to the local dind daemon."
-    expired_at: 2026-11-11
-  - id: CVE-2026-97031
-    paths: ["usr/local/lib/docker/cli-plugins/docker-compose"]
-    statement: "Go crypto/tls denial of service; no Compose release built with Go 1.26.9 yet; only talks to the local dind daemon."
+    statement: "x/net HTTP/2 denial of service; Compose 5.6.1 vendors golang.org/x/net 0.58.0, the fix is in 0.60.0, no Compose release with it yet; only talks to the local dind daemon."
     expired_at: 2026-11-11

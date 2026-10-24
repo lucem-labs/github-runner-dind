@@ -11,27 +11,44 @@ its container exits and is removed, and the supervisor starts a replacement. The
 that can mint configs stays on the host: containers only ever receive their own single-use
 config.
 
+Runners serve either one repository (-Repository) or an organization (-Organization). Org
+runners join a runner group (-RunnerGroupId), whose repository access decides which
+repositories can use them; the supervisor refuses to start if that group allows public
+repositories.
+
 Credentials (-Auth):
-  gh   the host user's GitHub CLI login (`gh auth token`). Needs admin access to the repository.
-  app  a GitHub App installed on the repository with "Administration: Read and write"; needs
+  gh   the host user's GitHub CLI login (`gh auth token`). Needs admin access to the repository,
+       or the admin:org scope and org owner rights for -Organization.
+  app  a GitHub App installed on the repository or organization with "Administration: Read and
+       write" (repository) or "Self-hosted runners: Read and write" (organization); needs
        PowerShell 7 to read the private key (-AppId, -AppPrivateKeyPath).
 
-Stop with Ctrl+C (or stop the scheduled task): runner containers are stopped and their
-registrations deleted.
+It runs either on the host (Windows PowerShell 5.1 or PowerShell 7, for example as a scheduled
+task) or as the `supervisor` service of compose.yaml (-ExternalSidecars, with the host's
+Docker socket mounted).
+
+Stop with Ctrl+C, or SIGTERM in a container (`docker compose stop`): runner containers are
+stopped and their registrations deleted.
 
 .EXAMPLE
 ./runner-supervisor.ps1 -Repository owner/repo -Labels ci
+
+.EXAMPLE
+./runner-supervisor.ps1 -Organization my-org -RunnerGroupId 1 -Labels ci
 #>
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName = 'Repository')]
 param(
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $true, ParameterSetName = 'Repository')]
     [ValidatePattern('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')]
     [string]$Repository,
+    [Parameter(Mandatory = $true, ParameterSetName = 'Organization')]
+    [ValidatePattern('^[A-Za-z0-9-]+$')]
+    [string]$Organization,
     [ValidateRange(1, 32)]
     [int]$Slots = 2,
     # Custom labels; self-hosted, linux and x64 are always added.
     [string[]]$Labels = @('ci'),
-    [string]$Image = 'ghcr.io/kharabasz/github-runner-dind:latest',
+    [string]$Image = 'ghcr.io/lucem-labs/github-runner-dind:latest',
     # Compose project of the dind sidecars (compose.yaml, RUNNERS_PROJECT).
     [string]$Project = 'github-runners',
     # Defaults to compose.yaml next to the supervisor folder.
@@ -44,6 +61,9 @@ param(
     [string]$AppId,
     [string]$AppPrivateKeyPath,
     [int]$PollSeconds = 5,
+    # The dind sidecars are started by someone else (the compose.yaml `supervisor` service
+    # depends on them), so don't run `docker compose up`.
+    [switch]$ExternalSidecars,
     # Start the missing runners once and exit, leaving them running (for testing).
     [switch]$Once,
     # Remove this project's runner containers and runner registrations, then exit.
@@ -55,6 +75,9 @@ $ErrorActionPreference = 'Stop'
 if (-not $ComposeFile) { $ComposeFile = Join-Path (Split-Path -Parent $PSScriptRoot) 'compose.yaml' }
 $labelPrefix = 'io.github.runner-supervisor'
 $apiBase = 'https://api.github.com'
+# API path prefix and log name of what the runners serve.
+if ($Organization) { $scope = "orgs/$Organization"; $target = "organization $Organization" }
+else { $scope = "repos/$Repository"; $target = $Repository }
 $namePattern = '^' + [regex]::Escape($NamePrefix) + '-\d+-[0-9a-f]{8}$'
 
 function Write-Log([string]$Message) { Write-Host ("{0:u} {1}" -f (Get-Date).ToUniversalTime(), $Message) }
@@ -84,7 +107,7 @@ function Get-AppToken {
     finally { $rsa.Dispose() }
     $jwt = "$header.$payload.$(ConvertTo-Base64Url $signature)"
     $appHeaders = @{ Authorization = "Bearer $jwt"; Accept = 'application/vnd.github+json'; 'X-GitHub-Api-Version' = '2022-11-28' }
-    $installation = Invoke-RestMethod -Headers $appHeaders -Uri "$apiBase/repos/$Repository/installation"
+    $installation = Invoke-RestMethod -Headers $appHeaders -Uri "$apiBase/$scope/installation"
     $token = Invoke-RestMethod -Method Post -Headers $appHeaders -Uri "$apiBase/app/installations/$($installation.id)/access_tokens"
     $script:appToken = $token.token
     $script:appTokenExpires = [DateTimeOffset]::Parse($token.expires_at)
@@ -106,12 +129,22 @@ function Invoke-GitHub([string]$Method, [string]$Path, $Body) {
 }
 
 function Remove-RunnerRegistration([long]$RunnerId) {
-    try { Invoke-GitHub DELETE "repos/$Repository/actions/runners/$RunnerId" $null | Out-Null }
+    try { Invoke-GitHub DELETE "$scope/actions/runners/$RunnerId" $null | Out-Null }
     catch {
         # 404: an ephemeral runner removes itself after its job. Anything else is worth reporting.
         $status = $null
         if ($_.Exception.Response) { $status = [int]$_.Exception.Response.StatusCode }
         if ($status -ne 404) { Write-Log "Could not delete runner $RunnerId registration: $($_.Exception.Message)" }
+    }
+}
+
+function Assert-RunnerGroupPrivate {
+    # These are trusted-code runners (see the README's isolation model): never offer them to
+    # public repositories, where anyone who can open a pull request could run code on them.
+    if (-not $Organization) { return }
+    $group = Invoke-GitHub GET "$scope/actions/runner-groups/$RunnerGroupId" $null
+    if ($group.allows_public_repositories) {
+        throw "Runner group '$($group.name)' allows public repositories; turn that off before attaching these runners."
     }
 }
 
@@ -140,7 +173,7 @@ function Test-DindReady([int]$Slot) {
 function Start-Runner([int]$Slot) {
     $suffix = -join ((1..8) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
     $name = "$NamePrefix-$Slot-$suffix"
-    $config = Invoke-GitHub POST "repos/$Repository/actions/runners/generate-jitconfig" @{
+    $config = Invoke-GitHub POST "$scope/actions/runners/generate-jitconfig" @{
         name            = $name
         runner_group_id = $RunnerGroupId
         labels          = @('self-hosted', 'linux', 'x64') + $Labels
@@ -189,7 +222,7 @@ function Remove-StaleRunners {
     $stale = @()
     $page = 1
     do {
-        $response = Invoke-GitHub GET "repos/$Repository/actions/runners?per_page=100&page=$page" $null
+        $response = Invoke-GitHub GET "$scope/actions/runners?per_page=100&page=$page" $null
         $stale += @($response.runners | Where-Object { $_.name -match $namePattern })
         $page++
     } while (@($response.runners).Count -eq 100)
@@ -226,21 +259,43 @@ if ($Cleanup) {
     return
 }
 
-Write-Log "Supervising $Slots runner slot(s) for $Repository (labels: $(@('self-hosted', 'linux', 'x64') + $Labels -join ', '); image: $Image; auth: $Auth)."
+# In a container, `docker stop` sends SIGTERM, which would otherwise end the process without the
+# finally block below. Record it instead and let the loop stop the runners tidily.
+$stopSignal = $false
+if ($IsLinux) {
+    Add-Type -TypeDefinition @'
+using System.Runtime.InteropServices;
+public static class SupervisorStopSignal {
+    public static volatile bool Requested;
+    static PosixSignalRegistration registration;
+    public static void Register() {
+        registration = PosixSignalRegistration.Create(PosixSignal.SIGTERM, context => { context.Cancel = true; Requested = true; });
+    }
+}
+'@
+    [SupervisorStopSignal]::Register()
+    $stopSignal = $true
+}
+function Test-StopRequested { $stopSignal -and [SupervisorStopSignal]::Requested }
+
+Write-Log "Supervising $Slots runner slot(s) for $target (labels: $(@('self-hosted', 'linux', 'x64') + $Labels -join ', '); image: $Image; auth: $Auth)."
 # Docker Desktop, the network or the GitHub CLI may still be starting (for example right after
 # logon, when the scheduled task starts): wait and retry instead of exiting, because Task
 # Scheduler does not restart a task whose script exits with an error.
 while ($true) {
     try {
-        & docker compose --file $ComposeFile --project-name $Project up --detach --wait
-        if ($LASTEXITCODE -ne 0) { throw 'starting the Docker-in-Docker sidecars failed' }
+        if (-not $ExternalSidecars) {
+            & docker compose --file $ComposeFile --project-name $Project up --detach --wait
+            if ($LASTEXITCODE -ne 0) { throw 'starting the Docker-in-Docker sidecars failed' }
+        }
+        Assert-RunnerGroupPrivate
         Remove-StaleRunners
         break
     }
     catch {
         if ($Once) { throw }
         Write-Log "Not ready yet ($($_.Exception.Message)); retrying in 30s."
-        Start-Sleep -Seconds 30
+        foreach ($second in 1..30) { if (Test-StopRequested) { return }; Start-Sleep -Seconds 1 }
     }
 }
 
@@ -293,6 +348,7 @@ try {
         }
         if ($Once) { break }
         Start-Sleep -Seconds $PollSeconds
+        if (Test-StopRequested) { Write-Log 'Stop requested.'; break }
     }
 }
 finally {

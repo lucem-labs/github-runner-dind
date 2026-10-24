@@ -6,11 +6,15 @@
 # so containers a job starts with `docker run --publish 127.0.0.1::<port>` are reachable from
 # the job on 127.0.0.1, and jobs only ever see their own dind daemon, never the host's Docker.
 # Add a slot by copying dind-2 with the next number and its volumes.
+#
+# The supervisor runs either on the host (it starts these sidecars itself) or as the
+# `supervisor` service below (`--profile supervisor`), configured through the RUNNERS_* and
+# GITHUB_APP_* variables; see README.md "Running the supervisor in Docker".
 name: ${RUNNERS_PROJECT:-github-runners}
 
 x-dind: &dind
   # Pinned by digest (Dependabot keeps it current); keep in step with the image's Docker CLI.
-  image: docker:29.9.0-dind@sha256:0b6d18a4a222e71c88be6034926b4f6cde2fc33c2218643d03ccfddc65995470
+  image: docker:29.9.2-dind@sha256:9e79b879b177fbd72c34376a3dd3d91747da5db49e1f560f76aea59561471977
   # Required by Docker-in-Docker. See README.md "Isolation model" for what this does and doesn't protect.
   privileged: true
   restart: always
@@ -36,6 +40,48 @@ services:
     volumes:
       - dind-2-data:/var/lib/docker
       - dind-2-certs:/certs
+
+  # Runs supervisor/runner-supervisor.ps1 from the runner image, which already has PowerShell 7
+  # and the Docker CLI. It talks to the host's Docker (the socket is mounted here only, never into
+  # a runner container) to start the runner containers, and authenticates as a GitHub App whose
+  # private key comes in as a secret.
+  supervisor:
+    profiles: [supervisor]
+    image: ${RUNNER_IMAGE:-ghcr.io/lucem-labs/github-runner-dind:latest}
+    # Root for the Docker socket; the runner containers it starts still run as `runner`.
+    user: root
+    restart: unless-stopped
+    # Long enough for the supervisor to stop its runners (docker stop --time 20) and deregister them.
+    stop_grace_period: 60s
+    depends_on:
+      dind-1: { condition: service_healthy }
+      dind-2: { condition: service_healthy }
+    environment:
+      DOCKER_HOST: unix:///var/run/docker.sock
+      DOCKER_TLS_VERIFY: ""
+      DOCKER_CERT_PATH: ""
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./supervisor:/opt/runner-supervisor:ro
+    secrets:
+      - github-app-key
+    entrypoint: ["pwsh", "-NoProfile", "-File", "/opt/runner-supervisor/runner-supervisor.ps1"]
+    # RUNNERS_TARGET is `-Organization <org>` or `-Repository <owner/repo>`.
+    command: >-
+      ${RUNNERS_TARGET:-}
+      -RunnerGroupId ${RUNNERS_GROUP_ID:-1}
+      -Labels ${RUNNERS_LABELS:-ci}
+      -Slots 2
+      -Image ${RUNNER_IMAGE:-ghcr.io/lucem-labs/github-runner-dind:latest}
+      -Project ${RUNNERS_PROJECT:-github-runners}
+      -NamePrefix ${RUNNERS_NAME_PREFIX:-runner}
+      -Auth app -AppId ${GITHUB_APP_ID:-}
+      -AppPrivateKeyPath /run/secrets/github-app-key
+      -ExternalSidecars
+
+secrets:
+  github-app-key:
+    file: ${GITHUB_APP_KEY_FILE:-./github-app-key.pem}
 
 volumes:
   dind-1-data:

@@ -30,10 +30,18 @@ The supervisor keeps one idle runner per slot. GitHub dispatches queued jobs to 
 Requirements: Docker (Docker Desktop on Windows), PowerShell (Windows PowerShell 5.1 or PowerShell 7), and a credential that can create runners for the repository (see below).
 
 ```powershell
-git clone https://github.com/kharabasz/github-runner-dind
+git clone https://github.com/lucem-labs/github-runner-dind
 cd github-runner-dind
-./supervisor/runner-supervisor.ps1 -Repository owner/repo -Labels ci -Image ghcr.io/kharabasz/github-runner-dind@sha256:<digest>
+./supervisor/runner-supervisor.ps1 -Repository owner/repo -Labels ci -Image ghcr.io/lucem-labs/github-runner-dind@sha256:<digest>
 ```
+
+To share one pool between several repositories, register the runners with an organization instead:
+
+```powershell
+./supervisor/runner-supervisor.ps1 -Organization my-org -RunnerGroupId 1 -Labels ci -Image ghcr.io/lucem-labs/github-runner-dind@sha256:<digest>
+```
+
+The runner group's **repository access** decides which repositories can use the runners: set it to the selected private repositories (org **Settings → Actions → Runner groups**). In organization mode the supervisor refuses to start while the group allows public repositories.
 
 The supervisor starts the dind sidecars (`docker compose up`), removes leftovers from earlier runs, and keeps the pool running until stopped. Target the runners in workflows by label:
 
@@ -46,17 +54,40 @@ jobs:
 **Pin the image by digest** rather than using `latest`.
 
 ### Credential (`-Auth`)
-Minting JIT configs needs *Administration: write* on the repository. The credential stays with the supervisor on the host and never enters a container.
+Minting JIT configs needs *Administration: write* on the repository, or *Self-hosted runners: write* on the organization. The credential stays with the supervisor on the host and never enters a container.
 
-- **`gh` (default):** the host user's GitHub CLI login (`gh auth login`), which must have admin access to the repository. There's no new secret to create or store, but the token is as broad as your account.
-- **`app`:** a GitHub App installed **only** on the repository, with the repository permission **Administration: Read and write** and nothing else. Run with `-Auth app -AppId <id> -AppPrivateKeyPath <path to .pem>` under PowerShell 7. The supervisor signs a short-lived JWT with the key to get one-hour installation tokens. This is least privilege and independent of any user account. Restrict the key file's ACL to the account running the supervisor.
+- **`gh` (default):** the host user's GitHub CLI login (`gh auth login`), which must have admin access to the repository. For `-Organization`, the user must be an org owner and the login needs the `admin:org` scope (`gh auth refresh -s admin:org`). There's no new secret to create or store, but the token is as broad as your account.
+- **`app`:** a GitHub App installed **only** on the repository (or organization), with the repository permission **Administration: Read and write** (or the organization permission **Self-hosted runners: Read and write**) and nothing else. Run with `-Auth app -AppId <id> -AppPrivateKeyPath <path to .pem>` under PowerShell 7. The supervisor signs a short-lived JWT with the key to get one-hour installation tokens. This is least privilege and independent of any user account. Restrict the key file's ACL to the account running the supervisor.
 
-### Running it permanently (Windows)
+### Running the supervisor in Docker (recommended)
+The `supervisor` service in `compose.yaml` runs the supervisor from the runner image, next to the dind sidecars. Docker restarts it with Docker Desktop (`restart: unless-stopped`), so there is no scheduled task, and its log is `docker compose logs supervisor`.
+
+It needs a **GitHub App** credential, because the host's `gh` login isn't available in a container: create an App with only the permission listed under [Credential](#credential--auth), install it on the repository or organization, and generate a private key. Then put the settings in a `.env` file next to `compose.yaml`, or pass them with `--env-file`:
+
+```dotenv
+RUNNERS_PROJECT=my-runners
+RUNNERS_TARGET=-Organization my-org        # or -Repository owner/repo
+RUNNERS_NAME_PREFIX=my-ci
+RUNNERS_LABELS=ci
+RUNNER_IMAGE=ghcr.io/lucem-labs/github-runner-dind@sha256:<digest>
+GITHUB_APP_ID=<app id>
+GITHUB_APP_KEY_FILE=C:/path/to/app-private-key.pem
+```
+
+```powershell
+docker compose --profile supervisor up --detach    # start or update
+docker compose --profile supervisor logs supervisor
+docker compose --profile supervisor stop           # stops and deregisters the runners
+```
+
+The supervisor container mounts the host's Docker socket, which it needs to start runner containers. That gives it control over everything else in that Docker engine too, the same as a supervisor running on the host. Runner containers never get the socket.
+
+### Running it permanently on the host (Windows)
 Register a scheduled task that starts at logon (Docker Desktop must be running) and restarts on failure:
 
 ```powershell
 $script = 'C:\path\to\github-runner-dind\supervisor\runner-supervisor.ps1'
-$arguments = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`" -Repository owner/repo -Labels ci -Image ghcr.io/kharabasz/github-runner-dind@sha256:<digest>"
+$arguments = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`" -Repository owner/repo -Labels ci -Image ghcr.io/lucem-labs/github-runner-dind@sha256:<digest>"
 Register-ScheduledTask -TaskName 'GitHub runner supervisor' `
   -Action (New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arguments) `
   -Trigger (New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME) `
@@ -73,15 +104,17 @@ Supervisor parameters:
 
 | Parameter | Default | Meaning |
 |---|---|---|
-| `-Repository` | (required) | `owner/repo` the runners serve |
+| `-Repository` | | `owner/repo` the runners serve |
+| `-Organization` | | Organization the runners serve instead; exactly one of `-Repository` and `-Organization` is required |
 | `-Slots` | `2` | Number of runners. Each needs a `dind-N` service in `compose.yaml`. |
 | `-Labels` | `ci` | Custom labels; `self-hosted`, `linux` and `x64` are always added |
-| `-Image` | `ghcr.io/kharabasz/github-runner-dind:latest` | Runner image; pin by digest |
+| `-Image` | `ghcr.io/lucem-labs/github-runner-dind:latest` | Runner image; pin by digest |
 | `-Project` | `github-runners` | Compose project of the dind sidecars, and the prefix for container and volume names |
 | `-NamePrefix` | `runner` | Runners are named `<prefix>-<slot>-<random>`. Also selects which registrations count as leftovers, so use a prefix unique to this supervisor. |
 | `-Auth`, `-AppId`, `-AppPrivateKeyPath` | `gh` | Credential, see above |
-| `-RunnerGroupId` | `1` | Runner group (1 is the default group) |
+| `-RunnerGroupId` | `1` | Runner group (1 is the default group); with `-Organization` it must not allow public repositories |
 | `-PollSeconds` | `5` | How often slots are checked |
+| `-ExternalSidecars` | | Don't start the dind sidecars; something else does (the compose `supervisor` service) |
 | `-Once` | | Fill the pool once and exit, leaving the runners running |
 | `-Cleanup` | | Remove this project's runner containers and registrations, then exit |
 
@@ -98,7 +131,7 @@ A runner container shares its slot's dind network namespace. A job that runs `do
 ## Isolation model
 
 **What it protects against:**
-- jobs reading or changing the host's Docker containers and volumes, because the host's Docker socket is never mounted;
+- jobs reading or changing the host's Docker containers and volumes, because the host's Docker socket is never mounted into a runner container (only into the optional `supervisor` service);
 - jobs reading host files, because no host directories are mounted;
 - jobs obtaining a credential that can create runners: the PAT, `gh` token or App key stays with the supervisor on the host;
 - one job seeing another's leftovers, because of a new container per job and a cleaned dind daemon.
@@ -124,10 +157,11 @@ Every change is built, scanned and only pushed from `main`. Consumers then bump 
 ## Troubleshooting
 
 - **`The GitHub CLI is not logged in`:** run `gh auth login` as the user the supervisor runs as, or use `-Auth app`.
-- **`could not start a runner (… 403 …)`:** the credential lacks admin access to the repository (*Administration: write*).
+- **`could not start a runner (… 403 …)`:** the credential lacks admin access to the repository (*Administration: write*), or for an organization the `admin:org` scope or *Self-hosted runners: write*.
+- **`Runner group '…' allows public repositories`:** in org **Settings → Actions → Runner groups**, turn off *Allow public repositories* for that group.
 - **`Docker-in-Docker sidecar is not healthy yet`:** check `docker compose logs dind-1`. It needs `privileged: true`.
 - **A slot keeps restarting** (`exited after Ns; retrying`): look at the container's output. `docker logs` won't work because the container is already removed; run the image by hand with `-Once`, or check the job log on GitHub.
-- **A job stays queued:** check that the runners are online in the repository's **Settings → Actions → Runners** and that the job's `runs-on` labels match.
+- **A job stays queued:** check that the runners are online in the repository's (or organization's) **Settings → Actions → Runners**, that the job's `runs-on` labels match, and for org runners that the runner group gives the repository access.
 - **The dind data volumes grow:** images accumulate. Stop the supervisor, run `docker compose down`, remove `<project>_dind-N-data`, then start the supervisor again.
 
 ## License
