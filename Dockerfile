@@ -7,7 +7,7 @@
 # through a reviewed pull request; see README.md "Updating".
 
 # Base image pinned by digest (Dependabot keeps it current).
-FROM ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
+FROM ubuntu:24.04@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac
 
 # GitHub Actions runner: https://github.com/actions/runner/releases (SHA-256 from the release notes)
 ARG RUNNER_VERSION=2.338.1
