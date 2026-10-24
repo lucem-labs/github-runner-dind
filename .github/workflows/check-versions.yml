@@ -47,3 +47,19 @@ jobs:
           else
             gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file body.md
           fi
+
+      - name: Close the tracking issue when every pin is current
+        if: steps.check.outputs.outdated == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Pinned tool updates available"
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"$title\"" --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            {
+              echo "Every pinned tool is current as of this week's check."
+              echo
+              cat report.md
+            } > comment.md
+            gh issue close "$number" --repo "$GITHUB_REPOSITORY" --comment "$(cat comment.md)"
+          fi
