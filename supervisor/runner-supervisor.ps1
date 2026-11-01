@@ -191,6 +191,10 @@ function Start-Runner([int]$Slot) {
             '--label', "$labelPrefix.project=$Project",
             '--label', "$labelPrefix.slot=$Slot",
             '--label', "$labelPrefix.runner-id=$($config.runner.id)",
+            # Groups the runner with its sidecars in Docker Desktop. Compose ignores containers it
+            # didn't create, so `up --remove-orphans` never removes a runner mid-job.
+            '--label', "com.docker.compose.project=$Project",
+            '--label', "com.docker.compose.service=runner-$Slot",
             '--network', "container:$Project-dind-$Slot-1",
             '--volume', "${Project}_dind-$Slot-certs:/certs:ro",
             '--volume', "${Project}_runner-$Slot-nuget:/home/runner/.nuget",
