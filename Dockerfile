@@ -10,14 +10,14 @@
 FROM ubuntu:24.04@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852
 
 # GitHub Actions runner: https://github.com/actions/runner/releases (SHA-256 from the release notes)
-ARG RUNNER_VERSION=2.338.1
-ARG RUNNER_SHA256=08e9ccb3604d2462c24b5e33604dc30810296ca15cc65f23cffd4317eb144c37
+ARG RUNNER_VERSION=2.338.2
+ARG RUNNER_SHA256=baebf204307bac6193480852732f0aba2ae97b6c5597c244f4d5558390147c40
 # PowerShell: https://github.com/PowerShell/PowerShell/releases (SHA-256 from the release notes / hashes.sha256)
 ARG POWERSHELL_VERSION=7.6.9
 ARG POWERSHELL_SHA256=1da6d6d6035d651f20e70ddee7c4c15ac6ab8b9fb40ee92240d91263f28a884b
 # Node.js: https://nodejs.org/dist/v<version>/SHASUMS256.txt
-ARG NODE_VERSION=24.22.1
-ARG NODE_SHA256=6c172a9ab6718f7b801fb5a7bd486af2ee5e32758086a04b84fcce2aa77095e6
+ARG NODE_VERSION=24.22.2
+ARG NODE_SHA256=48cc0e21e048790e54c0cf5749c2725005313d652651c40b7a21feb9697aaf75
 # npm: upgraded from the version bundled with Node.js to pick up fixes in its dependencies.
 ARG NPM_VERSION=11.21.1
 # .NET SDK: https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/10.0/releases.json (SHA-512)
