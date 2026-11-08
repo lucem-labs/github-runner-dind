@@ -27,8 +27,8 @@ ARG DOTNET_SDK_SHA512=b7b3d8461cf98b07d2552ce9199702fa3ad010ac2671a5f8cd5136f753
 ARG DOCKER_CLI_VERSION=29.9.2
 ARG DOCKER_REPO_SIGNING_FPR=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
 # Docker Compose plugin: https://github.com/docker/compose/releases (docker-compose-linux-x86_64.sha256)
-ARG COMPOSE_VERSION=5.6.1
-ARG COMPOSE_SHA256=47737f4236e6d3ccea7291995203f8f018058783b4c3a9469119811a0b5db8c0
+ARG COMPOSE_VERSION=5.7.0
+ARG COMPOSE_SHA256=7758048ad38e580f22559603312874fec8bb638d021a9e64182385fc17cc12a2
 # Playwright Chromium and its OS dependencies, baked in so e2e jobs don't download browsers.
 # Match the consumers' @playwright/test version: each release needs its own browser build.
 ARG PLAYWRIGHT_VERSION=1.63.0
@@ -49,7 +49,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Base packages.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      ca-certificates curl git gnupg jq tar unzip xz-utils \
+      apt libapt-pkg6.0t64 ca-certificates curl git gnupg jq tar unzip xz-utils \
       # IANA time zone data: .NET resolves zones such as Europe/London through it.
       tzdata \
       libicu74 libssl3t64 libstdc++6 zlib1g libgcc-s1 \
