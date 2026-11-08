@@ -20,6 +20,18 @@ env:
   IMAGE: ghcr.io/${{ github.repository }}
 
 jobs:
+  supervisor-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run supervisor tests
+        shell: pwsh
+        run: Invoke-Pester -Path tests -CI
+
   build:
     # GitHub-hosted only. Never attach a self-hosted runner to this public repository: anyone
     # who can open a pull request could run code on it.

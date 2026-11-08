@@ -138,10 +138,16 @@ function Remove-RunnerRegistration([long]$RunnerId) {
     }
 }
 
-function Assert-RunnerGroupPrivate {
+function Assert-RunnerTargetPrivate {
     # These are trusted-code runners (see the README's isolation model): never offer them to
     # public repositories, where anyone who can open a pull request could run code on them.
-    if (-not $Organization) { return }
+    if (-not $Organization) {
+        $repositoryDetails = Invoke-GitHub GET $scope $null
+        if ($repositoryDetails.private -ne $true) {
+            throw "Repository '$Repository' is public; these runners only serve private repositories."
+        }
+        return
+    }
     $group = Invoke-GitHub GET "$scope/actions/runner-groups/$RunnerGroupId" $null
     if ($group.allows_public_repositories) {
         throw "Runner group '$($group.name)' allows public repositories; turn that off before attaching these runners."
@@ -292,7 +298,7 @@ while ($true) {
             & docker compose --file $ComposeFile --project-name $Project up --detach --wait
             if ($LASTEXITCODE -ne 0) { throw 'starting the Docker-in-Docker sidecars failed' }
         }
-        Assert-RunnerGroupPrivate
+        Assert-RunnerTargetPrivate
         Remove-StaleRunners
         break
     }
