@@ -53,6 +53,8 @@ cd github-runner-dind
 ./supervisor/runner-supervisor.ps1 -Repository owner/repo -Labels ci -Image ghcr.io/lucem-labs/github-runner-dind@sha256:<digest>
 ```
 
+The supervisor refuses to start runners for a public repository.
+
 To share one pool between several repositories, register the runners with an organization instead:
 
 ```powershell
@@ -122,7 +124,7 @@ Supervisor parameters:
 
 | Parameter | Default | Meaning |
 |---|---|---|
-| `-Repository` | | `owner/repo` the runners serve |
+| `-Repository` | | Private `owner/repo` the runners serve |
 | `-Organization` | | Organization the runners serve instead; exactly one of `-Repository` and `-Organization` is required |
 | `-Slots` | `2` | Number of runners. Each needs a `dind-N` service in `compose.yaml`. |
 | `-Labels` | `ci` | Custom labels; `self-hosted`, `linux` and `x64` are always added |
@@ -177,6 +179,7 @@ Every change is built, scanned and only pushed from `main`. Consumers then bump 
 - **`The GitHub CLI is not logged in`:** run `gh auth login` as the user the supervisor runs as, or use `-Auth app`.
 - **`could not start a runner (… 403 …)`:** the credential lacks admin access to the repository (*Administration: write*), or for an organization the `admin:org` scope or *Self-hosted runners: write*.
 - **`Runner group '…' allows public repositories`:** in org **Settings → Actions → Runner groups**, turn off *Allow public repositories* for that group.
+- **`Repository '…' is public`:** these runners only serve private repositories. The supervisor retries every 30 seconds and starts runners once the repository is private.
 - **`Docker-in-Docker sidecar is not healthy yet`:** check `docker compose logs dind-1`. It needs `privileged: true`.
 - **A slot keeps restarting** (`exited after Ns; retrying`): look at the container's output. `docker logs` won't work because the container is already removed; run the image by hand with `-Once`, or check the job log on GitHub.
 - **A job stays queued:** check that the runners are online in the repository's (or organization's) **Settings → Actions → Runners**, that the job's `runs-on` labels match, and for org runners that the runner group gives the repository access.
