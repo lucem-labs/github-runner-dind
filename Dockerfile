@@ -24,7 +24,7 @@ ARG NPM_VERSION=11.21.1
 ARG DOTNET_SDK_VERSION=10.0.403
 ARG DOTNET_SDK_SHA512=b7b3d8461cf98b07d2552ce9199702fa3ad010ac2671a5f8cd5136f7534e50f6855ba7bbb02b11494563f1d04156276a31cda1103b900e5eecd0d9473dc7b9c5
 # Docker CLI (client only) from Docker's signed apt repository; keep in step with the dind sidecar.
-ARG DOCKER_CLI_VERSION=29.9.2
+ARG DOCKER_CLI_VERSION=29.9.3
 ARG DOCKER_REPO_SIGNING_FPR=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
 # Docker Compose plugin: https://github.com/docker/compose/releases (docker-compose-linux-x86_64.sha256)
 ARG COMPOSE_VERSION=5.7.0
