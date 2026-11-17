@@ -13,13 +13,13 @@ FROM ubuntu:24.04@sha256:2198e4c65076e9cb0b3d695219df667c0e3b0072da64ca3c2648aca
 ARG RUNNER_VERSION=2.338.2
 ARG RUNNER_SHA256=baebf204307bac6193480852732f0aba2ae97b6c5597c244f4d5558390147c40
 # PowerShell: https://github.com/PowerShell/PowerShell/releases (SHA-256 from the release notes / hashes.sha256)
-ARG POWERSHELL_VERSION=7.6.9
-ARG POWERSHELL_SHA256=1da6d6d6035d651f20e70ddee7c4c15ac6ab8b9fb40ee92240d91263f28a884b
+ARG POWERSHELL_VERSION=7.7.0
+ARG POWERSHELL_SHA256=c89d9c682d2c403dfe726f3df948e359675235a5bd6fab535776de69729ca0cb
 # Node.js: https://nodejs.org/dist/v<version>/SHASUMS256.txt
-ARG NODE_VERSION=24.22.2
-ARG NODE_SHA256=48cc0e21e048790e54c0cf5749c2725005313d652651c40b7a21feb9697aaf75
+ARG NODE_VERSION=24.22.3
+ARG NODE_SHA256=4f2b175a6d53a5c617a80dba2676238a0688cef28c6da4eba35c7d844e66fcfb
 # npm: upgraded from the version bundled with Node.js to pick up fixes in its dependencies.
-ARG NPM_VERSION=11.21.1
+ARG NPM_VERSION=11.21.2
 # .NET SDK: https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/10.0/releases.json (SHA-512)
 ARG DOTNET_SDK_VERSION=10.0.404
 ARG DOTNET_SDK_SHA512=577d0eb17fec33d029104c5c63a1ab0accc3e28776274abef2218dbac5af18d2109b5406d26b31d76f5c245215e3ba0926a94c20246c672c41847c9e1eb1dc50
@@ -27,8 +27,8 @@ ARG DOTNET_SDK_SHA512=577d0eb17fec33d029104c5c63a1ab0accc3e28776274abef2218dbac5
 ARG DOCKER_CLI_VERSION=29.9.3
 ARG DOCKER_REPO_SIGNING_FPR=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
 # Docker Compose plugin: https://github.com/docker/compose/releases (docker-compose-linux-x86_64.sha256)
-ARG COMPOSE_VERSION=5.7.0
-ARG COMPOSE_SHA256=7758048ad38e580f22559603312874fec8bb638d021a9e64182385fc17cc12a2
+ARG COMPOSE_VERSION=5.7.1
+ARG COMPOSE_SHA256=af426722a8af5de812fcee30cc1c39f0639f5f723cbadefb25e5d4db054064cf
 # Playwright Chromium and its OS dependencies, baked in so e2e jobs don't download browsers.
 # Match the consumers' @playwright/test version: each release needs its own browser build.
 ARG PLAYWRIGHT_VERSION=1.63.0
