@@ -40,3 +40,8 @@ vulnerabilities:
     paths: ["usr/local/lib/docker/cli-plugins/docker-compose"]
     statement: "x/net/html denial of service via crafted HTML; Compose 5.7.0 (latest release) vendors golang.org/x/net 0.60.0, the fix is in 0.62.0, no Compose release with it yet; the plugin only talks to the local dind daemon."
     expired_at: 2026-11-22
+
+  - id: CVE-2026-114149
+    paths: ["home/runner/actions-runner/bin/Runner.Worker.deps.json"]
+    statement: "ASP.NET Core multipart form parsing denial of service; runner 2.338.2 (latest release) bundles Microsoft.AspNetCore.WebUtilities 8.0.25, actions/runner#4849 moved it to 8.0.34 on main but no release has it yet; the worker serves no HTTP endpoint (its debugger bridge listens on loopback only)."
+    expired_at: 2026-12-01
