@@ -7,7 +7,7 @@
 # through a reviewed pull request; see README.md "Updating".
 
 # Base image pinned by digest (Dependabot keeps it current).
-FROM ubuntu:24.04@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852
+FROM ubuntu:24.04@sha256:2198e4c65076e9cb0b3d695219df667c0e3b0072da64ca3c2648aca17dcecaf5
 
 # GitHub Actions runner: https://github.com/actions/runner/releases (SHA-256 from the release notes)
 ARG RUNNER_VERSION=2.338.2
@@ -21,8 +21,8 @@ ARG NODE_SHA256=48cc0e21e048790e54c0cf5749c2725005313d652651c40b7a21feb9697aaf75
 # npm: upgraded from the version bundled with Node.js to pick up fixes in its dependencies.
 ARG NPM_VERSION=11.21.1
 # .NET SDK: https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/10.0/releases.json (SHA-512)
-ARG DOTNET_SDK_VERSION=10.0.403
-ARG DOTNET_SDK_SHA512=b7b3d8461cf98b07d2552ce9199702fa3ad010ac2671a5f8cd5136f7534e50f6855ba7bbb02b11494563f1d04156276a31cda1103b900e5eecd0d9473dc7b9c5
+ARG DOTNET_SDK_VERSION=10.0.404
+ARG DOTNET_SDK_SHA512=577d0eb17fec33d029104c5c63a1ab0accc3e28776274abef2218dbac5af18d2109b5406d26b31d76f5c245215e3ba0926a94c20246c672c41847c9e1eb1dc50
 # Docker CLI (client only) from Docker's signed apt repository; keep in step with the dind sidecar.
 ARG DOCKER_CLI_VERSION=29.9.3
 ARG DOCKER_REPO_SIGNING_FPR=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
