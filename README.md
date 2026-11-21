@@ -2,7 +2,7 @@
 
 Ephemeral self-hosted GitHub Actions runners in our own Docker image, each paired with its own Docker-in-Docker (dind) daemon, kept as a warm pool by a supervisor that hands every runner a **single-use just-in-time (JIT) config**.
 
-- **Our own image.** It starts from `ubuntu:24.04`, pinned by digest. Every tool is pinned to an exact version and verified against its published checksum or signed package repository: the Actions runner, PowerShell 7, .NET SDK, Node.js and npm, the Docker CLI and Compose plugin, and Playwright Chromium. It holds no secrets and runs as an unprivileged user.
+- **Our own image.** It starts from `ubuntu:24.04`, pinned by digest. Every tool is pinned to an exact version and verified against its published checksum or signed package repository: the Actions runner, PowerShell 7, the .NET 10 and 11 SDKs side by side, Node.js and npm, the Docker CLI and Compose plugin, and Playwright Chromium. It holds no secrets and runs as an unprivileged user.
 - **No long-lived credential in a runner container.** The supervisor mints a JIT config per runner with GitHub's `generate-jitconfig` API. A container only ever gets the config for its own single-job runner.
 - **A brand-new container per job.** `docker run --rm` gives every job a fresh filesystem. The dind daemon is cleaned before each job.
 - **Isolated from the host's Docker.** Jobs get their own dind daemon, so they can't see or control the host's containers, and no host directories are mounted.

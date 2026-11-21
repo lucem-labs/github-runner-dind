@@ -16,8 +16,10 @@ latest[POWERSHELL_VERSION]=$(gh_latest PowerShell/PowerShell)
 latest[COMPOSE_VERSION]=$(gh_latest docker/compose)
 node_major=$(pinned NODE_VERSION | cut -d. -f1)
 latest[NODE_VERSION]=$(curl -fsSL https://nodejs.org/dist/index.json | jq -r --arg m "v${node_major}." '[.[] | select(.version | startswith($m))][0].version' | sed 's/^v//')
-dotnet_channel=$(pinned DOTNET_SDK_VERSION | cut -d. -f1-2)
-latest[DOTNET_SDK_VERSION]=$(curl -fsSL "https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/${dotnet_channel}/releases.json" | jq -r '."latest-sdk"')
+for key in DOTNET_SDK_10_VERSION DOTNET_SDK_11_VERSION; do
+  dotnet_channel=$(pinned "$key" | cut -d. -f1-2)
+  latest[$key]=$(curl -fsSL "https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/${dotnet_channel}/releases.json" | jq -r '."latest-sdk"')
+done
 latest[PLAYWRIGHT_VERSION]=$(curl -fsSL https://registry.npmjs.org/playwright/latest | jq -r .version)
 docker_minor=$(pinned DOCKER_CLI_VERSION | cut -d. -f1-2)
 latest[DOCKER_CLI_VERSION]=$(curl -fsSL https://download.docker.com/linux/ubuntu/dists/noble/stable/binary-amd64/Packages \
@@ -27,7 +29,7 @@ latest[DOCKER_CLI_VERSION]=$(curl -fsSL https://download.docker.com/linux/ubuntu
 outdated=false
 echo "| Pin | Pinned | Latest | |"
 echo "|---|---|---|---|"
-for key in RUNNER_VERSION POWERSHELL_VERSION NODE_VERSION DOTNET_SDK_VERSION DOCKER_CLI_VERSION COMPOSE_VERSION PLAYWRIGHT_VERSION; do
+for key in RUNNER_VERSION POWERSHELL_VERSION NODE_VERSION DOTNET_SDK_10_VERSION DOTNET_SDK_11_VERSION DOCKER_CLI_VERSION COMPOSE_VERSION PLAYWRIGHT_VERSION; do
   have=$(pinned "$key"); want=${latest[$key]}
   if [ "$key" = PLAYWRIGHT_VERSION ]; then
     # Must match the consumers' @playwright/test version (the browser build is tied to it).

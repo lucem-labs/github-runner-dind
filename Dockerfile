@@ -20,9 +20,11 @@ ARG NODE_VERSION=24.22.3
 ARG NODE_SHA256=4f2b175a6d53a5c617a80dba2676238a0688cef28c6da4eba35c7d844e66fcfb
 # npm: upgraded from the version bundled with Node.js to pick up fixes in its dependencies.
 ARG NPM_VERSION=11.21.2
-# .NET SDK: https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/10.0/releases.json (SHA-512)
-ARG DOTNET_SDK_VERSION=10.0.404
-ARG DOTNET_SDK_SHA512=577d0eb17fec33d029104c5c63a1ab0accc3e28776274abef2218dbac5af18d2109b5406d26b31d76f5c245215e3ba0926a94c20246c672c41847c9e1eb1dc50
+# .NET SDKs, side by side: https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/<channel>/releases.json (SHA-512)
+ARG DOTNET_SDK_10_VERSION=10.0.404
+ARG DOTNET_SDK_10_SHA512=577d0eb17fec33d029104c5c63a1ab0accc3e28776274abef2218dbac5af18d2109b5406d26b31d76f5c245215e3ba0926a94c20246c672c41847c9e1eb1dc50
+ARG DOTNET_SDK_11_VERSION=11.0.100
+ARG DOTNET_SDK_11_SHA512=1bec9cca2ec689b1e80245b84f2b53c9441d1aa6daccf2ceb27490768bffa95954fa585bd275def31069d874d543d9ba9e6591fe9ade2dbd9f34ec5c0fd0050c
 # Docker CLI (client only) from Docker's signed apt repository; keep in step with the dind sidecar.
 ARG DOCKER_CLI_VERSION=29.9.3
 ARG DOCKER_REPO_SIGNING_FPR=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
@@ -93,13 +95,16 @@ RUN curl -fsSL -o /tmp/node.tar.xz "https://nodejs.org/dist/v${NODE_VERSION}/nod
  && npm install --global --no-fund --no-audit "npm@${NPM_VERSION}" \
  && rm -rf /root/.npm
 
-# .NET SDK.
-RUN curl -fsSL -o /tmp/dotnet.tar.gz "https://builds.dotnet.microsoft.com/dotnet/Sdk/${DOTNET_SDK_VERSION}/dotnet-sdk-${DOTNET_SDK_VERSION}-linux-x64.tar.gz" \
- && echo "${DOTNET_SDK_SHA512}  /tmp/dotnet.tar.gz" | sha512sum -c - \
- && mkdir -p "${DOTNET_ROOT}" \
- && tar -xzf /tmp/dotnet.tar.gz -C "${DOTNET_ROOT}" \
- && ln -s "${DOTNET_ROOT}/dotnet" /usr/bin/dotnet \
- && rm /tmp/dotnet.tar.gz
+# .NET SDKs.
+RUN mkdir -p "${DOTNET_ROOT}" \
+ && for sdk in "${DOTNET_SDK_10_VERSION} ${DOTNET_SDK_10_SHA512}" "${DOTNET_SDK_11_VERSION} ${DOTNET_SDK_11_SHA512}"; do \
+      set -- $sdk \
+      && curl -fsSL -o /tmp/dotnet.tar.gz "https://builds.dotnet.microsoft.com/dotnet/Sdk/$1/dotnet-sdk-$1-linux-x64.tar.gz" \
+      && echo "$2  /tmp/dotnet.tar.gz" | sha512sum -c - \
+      && tar -xzf /tmp/dotnet.tar.gz -C "${DOTNET_ROOT}" \
+      && rm /tmp/dotnet.tar.gz || exit 1; \
+    done \
+ && ln -s "${DOTNET_ROOT}/dotnet" /usr/bin/dotnet
 
 # Playwright Chromium with its OS dependencies (npm verifies the package's registry signature).
 RUN npx --yes "playwright@${PLAYWRIGHT_VERSION}" install --with-deps chromium \
