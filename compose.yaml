@@ -14,7 +14,7 @@ name: ${RUNNERS_PROJECT:-github-runners}
 
 x-dind: &dind
   # Pinned by digest (Dependabot keeps it current); keep in step with the image's Docker CLI.
-  image: docker:29.10.0-dind@sha256:4bbc7223f81db790097c6dea42fb93e05b8fead4f0431fbe6ccaba6e8473201c
+  image: docker:29.10.1-dind@sha256:fbbc96e0af32cdc190aff92ba97a1281a115351a723afe21af78879cc55126b0
   # Required by Docker-in-Docker. See README.md "Isolation model" for what this does and doesn't protect.
   privileged: true
   restart: always

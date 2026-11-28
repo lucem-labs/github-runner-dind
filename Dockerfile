@@ -26,7 +26,7 @@ ARG DOTNET_SDK_10_SHA512=577d0eb17fec33d029104c5c63a1ab0accc3e28776274abef2218db
 ARG DOTNET_SDK_11_VERSION=11.0.100
 ARG DOTNET_SDK_11_SHA512=1bec9cca2ec689b1e80245b84f2b53c9441d1aa6daccf2ceb27490768bffa95954fa585bd275def31069d874d543d9ba9e6591fe9ade2dbd9f34ec5c0fd0050c
 # Docker CLI (client only) from Docker's signed apt repository; keep in step with the dind sidecar.
-ARG DOCKER_CLI_VERSION=29.9.3
+ARG DOCKER_CLI_VERSION=29.10.1
 ARG DOCKER_REPO_SIGNING_FPR=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
 # Docker Compose plugin: https://github.com/docker/compose/releases (docker-compose-linux-x86_64.sha256)
 ARG COMPOSE_VERSION=5.7.1
