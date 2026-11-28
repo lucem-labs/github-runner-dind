@@ -10,8 +10,8 @@
 vulnerabilities:
   - id: CVE-2026-78661
     paths: ["usr/local/lib/docker/cli-plugins/docker-compose"]
-    statement: "x/net/html denial of service via crafted HTML; Compose 5.7.1 (latest release) vendors golang.org/x/net 0.60.0, the fix is in 0.62.0, no Compose release with it yet; the plugin only talks to the local dind daemon."
-    expired_at: 2026-11-22
+    statement: "x/net/html denial of service via crafted HTML; Compose 5.7.1 vendors golang.org/x/net 0.60.0 and so does every release through 5.8.1 (latest), the fix is in 0.62.0; the plugin only talks to the local dind daemon."
+    expired_at: 2026-12-08
 
   - id: CVE-2026-114149
     paths: ["home/runner/actions-runner/bin/Runner.Worker.deps.json"]
