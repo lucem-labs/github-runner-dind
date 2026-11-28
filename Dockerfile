@@ -29,8 +29,8 @@ ARG DOTNET_SDK_11_SHA512=1bec9cca2ec689b1e80245b84f2b53c9441d1aa6daccf2ceb274907
 ARG DOCKER_CLI_VERSION=29.10.1
 ARG DOCKER_REPO_SIGNING_FPR=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
 # Docker Compose plugin: https://github.com/docker/compose/releases (docker-compose-linux-x86_64.sha256)
-ARG COMPOSE_VERSION=5.7.1
-ARG COMPOSE_SHA256=af426722a8af5de812fcee30cc1c39f0639f5f723cbadefb25e5d4db054064cf
+ARG COMPOSE_VERSION=5.8.1
+ARG COMPOSE_SHA256=cf2713394ca63900da5d00e0be12045634cea93a504e1ab2f2ae24eed7f2d359
 # Playwright Chromium and its OS dependencies, baked in so e2e jobs don't download browsers.
 # Match the consumers' @playwright/test version: each release needs its own browser build.
 ARG PLAYWRIGHT_VERSION=1.63.0
